@@ -1,0 +1,270 @@
+using System;
+using System.Data;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using MySql.Data.MySqlClient;
+
+namespace Internal_Assessment
+{
+    class Database
+    {
+        public static string Connection = "datasource = 127.0.0.1; port = 3306; username = root; password =; database = test;";
+       
+        public static void AddData(string CmdTxt,string[] Para, string[] Values)
+        {
+            MySqlConnection DatabaseConnection = null;
+            try
+            {
+                DatabaseConnection = new MySqlConnection(Connection);
+                DatabaseConnection.Open();
+                
+                MySqlCommand Cmd = new MySqlCommand();
+                Cmd.Connection = DatabaseConnection;
+                Cmd.CommandText = CmdTxt;
+                Cmd.Prepare();
+
+                for (int x = 0; x < Values.Length; x++)
+                {
+                    Cmd.Parameters.AddWithValue(Para[x], Values[x]);
+                }
+                Cmd.ExecuteNonQuery();
+            }
+            finally
+            {
+                if (DatabaseConnection != null) DatabaseConnection.Close();
+            }
+        }
+
+        public static bool CheckData(string Query) 
+        {
+            bool Found;
+            
+            MySqlConnection DatabaseConnection = null;
+            try
+            {
+                DatabaseConnection = new MySqlConnection(Connection);
+                DatabaseConnection.Open();
+
+                MySqlCommand Cmd = new MySqlCommand(Query, DatabaseConnection);
+                MySqlDataReader Reader = Cmd.ExecuteReader();
+                if (Reader.HasRows)
+                {
+                    Found = true;
+                }
+                else
+                {
+                    Found = false;
+                }
+            }
+            finally
+            {
+                if (DatabaseConnection != null) DatabaseConnection.Close();
+            }
+
+            return Found;
+        }
+
+        public static void UpdateData(string Command)
+        {
+            MySqlConnection DatabaseConnection = null;
+            MySqlTransaction DatabaseTransaction = null;
+            try
+            {
+                DatabaseConnection = new MySqlConnection(Connection);
+                DatabaseConnection.Open();
+                DatabaseTransaction = DatabaseConnection.BeginTransaction();
+
+                MySqlCommand Cmd = new MySqlCommand();
+                Cmd.Connection = DatabaseConnection;
+                Cmd.Transaction = DatabaseTransaction;
+
+                Cmd.CommandText = Command;
+                Cmd.ExecuteNonQuery();
+
+                DatabaseTransaction.Commit();
+            }
+            catch (MySqlException ex)
+            {
+                DatabaseTransaction.Rollback();
+            }
+            finally
+            {
+                if (DatabaseConnection != null) DatabaseConnection.Close();
+            }
+        }
+
+        public static string[,] GetData(string Query, int Index)
+        {
+            string[,] Values;
+
+            MySqlConnection DatabaseConnection = null;
+            MySqlDataReader Reader = null;
+
+            int count = 0;
+            try
+            {
+                DatabaseConnection = new MySqlConnection(Connection);
+                DatabaseConnection.Open();
+
+                MySqlCommand Cmd = new MySqlCommand(Query, DatabaseConnection);
+
+                Reader = Cmd.ExecuteReader();
+                DataTable Table = new DataTable();          //can this b utilise somehow..??
+                Table.Load(Reader);
+                int Row = Table.Rows.Count;
+                Values = new string[Row, Index];
+
+                Reader = Cmd.ExecuteReader();
+                if (Reader.HasRows)
+                {
+                    while (Reader.Read())
+                    {
+                        for (int x = 0; x < Index; x++)
+                        {
+                            if (Reader.IsDBNull(x) == false) Values[count, x] = Reader.GetString(x);           //check for null before adding to the Values array
+                            if ((Index - 1) == x) count++;
+                        }
+                    }
+                }
+                else
+                {
+                    Values = null;
+                }
+            }
+            finally
+            {
+                if (DatabaseConnection != null) DatabaseConnection.Close();
+            }
+
+            return Values;
+
+
+            /*string[] Values = new string[Index];
+
+            MySqlConnection DatabaseConnection = null;
+            MySqlDataReader Reader = null;
+            try
+            {
+                DatabaseConnection = new MySqlConnection(Connection);
+                DatabaseConnection.Open();
+
+                MySqlCommand Cmd = new MySqlCommand(Query, DatabaseConnection);
+
+                Reader = Cmd.ExecuteReader();
+                if (Reader.HasRows)
+                {
+                    while (Reader.Read())
+                    {
+                        for (int x = 0; x < Index; x++)
+                        {
+                            if (Reader.IsDBNull(x) == false) Values[x] = Reader.GetString(x);           //check for null before adding to the Values array
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (DatabaseConnection != null) DatabaseConnection.Close();
+            }
+            
+            return Values;*/
+        }
+
+        public static void AddTeacher(string[] Values)
+        {
+            string CommandText = "INSERT INTO `teacher`(TeacherID,First_Name,Middle_Name,Surname,Title,Email,Password)VALUES(@ID,@FName,@MName,@SName,@Title,@Email,@Pass)";
+            string[] Para = new string[7] {"@ID", "@FName", "@MName", "@SName", "@Title", "@Email", "@Pass"};
+            AddData(CommandText, Para, Values);
+        }
+
+        public static void AddGroup(string[] Values)
+        {
+            string CommandText = "INSERT INTO `group`(GroupID,Name,TeacherID)VALUES(@ID,@Name,@TID)";
+            string[] Para = new string[3] { "@ID", "@Name", "@TID" };
+            AddData(CommandText, Para, Values);
+        }
+
+        public static void AddStudent(string[] Values)
+        {
+            string CommandText = "INSERT INTO `student`(StudentID,First_Name,Middle_Name,Surname,Preferred_Name,DOB,Address,GroupID,Email,Password)VALUES(@ID,@FName,@MName,@SName,@PName,@DOB,@Address,@GID,@Email,@Pass)";
+            string[] Para = new string[10] {"@ID", "@FName", "@MName", "@SName", "@PName", "@DOB", "@Address", "@GID", "@Email", "@Pass"};
+            AddData(CommandText, Para, Values);
+        }
+
+        public static void AddExperience(string[] Values)
+        {
+            string CommandText = "INSERT INTO `experience`(ExperienceID,Name,Aim,Description,Balanced,Caring,Communicators,Inquirers,Knowledgeable,Open-Minded,Principled,Reflective,Risk-Takers,Thinkers,Status,StudentID)VALUES(@ID,@Name,@Aim,@Description,@LP1,@LP2,@LP3,@LP4,@LP5,@LP6,@LP7,@LP8,@LP9,@LP10,@Status,@SID)";
+            string[] Para = new string[16] {"@ID", "@Name", "@Aim", "@Description", "@LP1", "@LP2", "@LP3", "@LP4", "@LP5", "@LP6", "@LP7", "@LP8", "@LP9", "@LP10", "@Status", "@SID"};
+            AddData(CommandText, Para, Values);
+        }
+
+        public static void UpdateExperience(string cmd, int ID)
+        {
+            string CommandText = string.Format("UPDATE experience SET {0} WHERE ExperienceID = '{1}'", cmd, ID);
+            UpdateData(CommandText);
+        }
+
+        public static string[] GetTeacher(string Email, string Pass)
+        {
+            string[] Values = new string[7];
+            string Query = string.Format("SELECT * FROM `teacher` WHERE Email = '{0}' AND Password = '{1}'", Email, Pass);      //myb need edit, need to make it work not only for email and pass
+       
+            if (CheckData(Query) == true)
+            {
+                string[,] temp = GetData(Query, 7);  //1.id  2.FirstName  3.MiddleName  4.Surname  5.Title  6.Email  7.Password
+                for (int i = 0; i < 7; i++)
+                {
+                    Values[i] = temp[0,i];
+                }
+            }
+            else
+            {
+                Values = null;
+            }
+
+            return Values;
+        }
+
+        public static string[,] GetGroup(int ID)
+        {
+            string cmd = string.Format("SELECT * FROM `group` WHERE TeacherID = '{0}'", ID);
+            return GetData(cmd, 3);    //1.id  2.Name  3.TeacherId
+        }
+
+        public static string[] GetStudent(string Email, string Pass)    //may change
+        {
+            string[] Values = new string[10];
+            string Query = string.Format("SELECT * FROM `student` WHERE Email = '{0}' AND Password = '{1}'", Email, Pass);
+            
+            if (CheckData(Query) == true)
+            {
+                string[,] temp = GetData(Query, 10);  //1.id  2.FirstName  3.MiddleName  4.Surname  5.PreferredName  6.DOB  7.Address  8.Groupid  9.Email  10.Password
+                for (int i = 0; i < 10; i++)
+                {
+                    Values[i] = temp[0, i];
+                }
+            }
+            else
+            {
+                Values = null;
+            }
+
+            return Values;
+        }
+
+        public static string[,] GetStudent(int ID)
+        {
+            string cmd = string.Format("SELECT * FROM `student` WHERE GroupID = '{0}'", ID);
+            return GetData(cmd, 10);     //1.id  2.FirstName  3.MiddleName  4.Surname  5.PreferredName  6.DOB   7.Address  8.Groupid  9.Email  10.Password
+        }
+
+        public static string[,] GetExperience(int ID)
+        {
+            string cmd = string.Format("SELECT * FROM `experience` WHERE StudentID = '{0}'", ID);
+            return GetData(cmd, 15);    //1.id  2.Name  3.Aim  4.Description  5.Balanced  6.Caring  7.Communicators  8.Inquirers  9.Knowledgeable  10.Open-Minded  11.Principled  12.Reflective  13.Risk-Takers  14.Thinkers  15.Status
+        }
+    }
+}
